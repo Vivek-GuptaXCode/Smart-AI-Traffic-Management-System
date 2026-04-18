@@ -1,0 +1,61 @@
+# Hybrid AI Traffic Management System - Dependencies
+# Install with: pip install -r requirements.txt
+
+# =============================================================================
+# Core Dependencies
+# =============================================================================
+numpy>=1.24.0,<2.0.0; python_version < "3.13"
+numpy>=2.2.0,<2.4.0; python_version >= "3.13"
+networkx>=3.1
+
+# =============================================================================
+# Server (V2X Central Server)
+# =============================================================================
+flask>=2.3.0,<3.0.0
+flask-socketio>=5.3.0
+flask-cors>=4.0.0
+python-socketio[client]>=5.9.0
+python-dotenv>=1.0.0
+
+# =============================================================================
+# Machine Learning / Forecasting (Phase 2)
+# =============================================================================
+scikit-learn>=1.3.0,<2.0.0
+lightgbm>=4.0.0
+
+# =============================================================================
+# Optional Dependencies
+# =============================================================================
+# Uncomment to enable additional features:
+
+# GPU-accelerated gradient boosting (alternative to LightGBM)
+# xgboost>=2.0.0
+
+# Deep learning models (neural network forecasting)
+# torch>=2.0.0
+
+# =============================================================================
+# Development Dependencies
+# =============================================================================
+# Uncomment for development:
+
+# Testing
+# pytest>=7.4.0
+# pytest-cov>=4.1.0
+
+# Code quality
+# black>=23.9.0
+# flake8>=6.1.0
+# mypy>=1.5.0
+
+# =============================================================================
+# SUMO Requirements
+# =============================================================================
+# SUMO (Simulation of Urban Mobility) must be installed separately.
+# Install from: https://sumo.dlr.de/docs/Installing/index.html
+#
+# After installation, ensure SUMO_HOME is set:
+#   export SUMO_HOME=/path/to/sumo
+#
+# Verify with:
+#   sumo --version

@@ -1,0 +1,236 @@
+.authContainer {
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  position: relative;
+  overflow: hidden;
+  background-color: var(--bg-darker);
+}
+
+.bgElement1 {
+  position: absolute;
+  top: -10%;
+  left: -10%;
+  width: 40%;
+  height: 40%;
+  background: rgba(126, 34, 206, 0.15);
+  filter: blur(120px);
+  border-radius: 50%;
+}
+
+.bgElement2 {
+  position: absolute;
+  bottom: -10%;
+  right: -10%;
+  width: 40%;
+  height: 40%;
+  background: rgba(15, 255, 240, 0.05);
+  filter: blur(120px);
+  border-radius: 50%;
+}
+
+.mountNode {
+  width: 100%;
+  max-width: 400px;
+  position: relative;
+  z-index: 10;
+}
+
+.logoWrapper {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 2rem;
+}
+
+.logo {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 10px 25px -5px rgba(15, 255, 240, 0.3);
+}
+
+.authCard {
+  background: rgba(19, 27, 38, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border-glass);
+  border-radius: 20px;
+  padding: 2.5rem;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+.cardHeader {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.title {
+  font-size: 1.875rem;
+  font-weight: 700;
+  background: linear-gradient(to right, #0ffff0, #c026d3);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  margin: 0;
+}
+
+.subtitle {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  margin-top: 0.5rem;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.inputGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-secondary);
+  margin-left: 0.25rem;
+}
+
+.inputWrapper {
+  position: relative;
+}
+
+.inputIcon {
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1rem;
+  height: 1rem;
+  color: var(--text-secondary);
+}
+
+.input {
+  width: 100%;
+  background: rgba(15, 21, 32, 0.5);
+  border: 1px solid var(--border-glass);
+  border-radius: 12px;
+  padding: 0.85rem 1rem 0.85rem 2.75rem;
+  color: white;
+  font-size: 0.95rem;
+  transition: all 0.2s;
+  outline: none;
+}
+
+.input:focus {
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 0 2px rgba(15, 255, 240, 0.1);
+}
+
+.otpInput {
+  text-align: center;
+  letter-spacing: 0.5em;
+  font-family: var(--font-mono);
+  padding-left: 1rem;
+}
+
+.submitButton {
+  width: 100%;
+  background: linear-gradient(to right, #7e22ce, #c026d3);
+  color: white;
+  font-weight: 700;
+  padding: 0.85rem;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: all 0.2s;
+  box-shadow: 0 10px 15px -3px rgba(126, 34, 206, 0.3);
+}
+
+.submitButton:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 15px 20px -3px rgba(126, 34, 206, 0.4);
+}
+
+.submitButton:active {
+  transform: translateY(0);
+}
+
+.submitButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.registerButton {
+  background: linear-gradient(to right, #0891b2, #06b6d4);
+  box-shadow: 0 10px 15px -3px rgba(8, 145, 178, 0.3);
+}
+
+.registerButton:hover {
+  box-shadow: 0 15px 20px -3px rgba(8, 145, 178, 0.4);
+}
+
+.switchButton {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: color 0.2s;
+  margin-top: 1rem;
+}
+
+.switchButton:hover {
+  color: var(--accent-cyan);
+}
+
+.errorMessage {
+  color: #f43f5e;
+  font-size: 0.75rem;
+  padding: 0 0.5rem;
+}
+
+.successMessage {
+  color: #10b981;
+  font-size: 0.75rem;
+  padding: 0 0.5rem;
+}
+
+.footer {
+  margin-top: 2rem;
+  text-align: center;
+}
+
+.footerText {
+  font-size: 10px;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  font-family: var(--font-mono);
+}
+
+.arrowIcon {
+  width: 1rem;
+  height: 1rem;
+  transition: transform 0.2s;
+}
+
+.submitButton:hover .arrowIcon {
+  transform: translateX(3px);
+}

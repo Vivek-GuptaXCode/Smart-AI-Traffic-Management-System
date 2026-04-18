@@ -1,0 +1,241 @@
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  height: 100%;
+}
+
+.controlsRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  background: rgba(5, 14, 26, 0.55);
+}
+
+.controlGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.controlGroup span {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.controlGroup select {
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--text-primary);
+  padding: 0 10px;
+  min-width: 130px;
+}
+
+.toggleGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+}
+
+.secondaryButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid rgba(15, 255, 240, 0.35);
+  background: rgba(15, 255, 240, 0.12);
+  color: #d9fffc;
+  padding: 0 10px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.comparePanel {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  background: rgba(3, 10, 19, 0.64);
+  padding: 12px;
+}
+
+.compareHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.compareHeader h3 {
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}
+
+.compareActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.73rem;
+  color: var(--text-secondary);
+}
+
+.clearButton {
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-secondary);
+  border-radius: 6px;
+  height: 26px;
+  padding: 0 8px;
+  cursor: pointer;
+}
+
+.rsuList {
+  max-height: 132px;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 8px;
+  padding-right: 2px;
+}
+
+.rsuOption {
+  display: grid;
+  grid-template-columns: 16px 1fr;
+  grid-template-rows: auto;
+  column-gap: 8px;
+  row-gap: 1px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 7px 8px;
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.rsuOption input {
+  grid-row: 1;
+  margin-top: 2px;
+}
+
+.rsuOption span {
+  font-size: 0.8rem;
+  line-height: 1.2;
+}
+
+.chartCard {
+  flex: 1;
+  min-height: 360px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  background:
+    radial-gradient(circle at top right, rgba(15, 255, 240, 0.08), transparent 46%),
+    rgba(4, 10, 20, 0.8);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.chartHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.chartHeader h3 {
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.chartHeader p {
+  margin-top: 2px;
+  font-size: 0.74rem;
+  color: var(--text-secondary);
+}
+
+.loadingBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  color: #b6fff9;
+}
+
+.spin {
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.chartBody {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+}
+
+.seriesSummary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.seriesChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 0.73rem;
+  color: var(--text-secondary);
+}
+
+.colorDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+}
+
+.seriesName {
+  color: var(--text-primary);
+}
+
+.errorText {
+  color: #fda4af;
+  font-size: 0.78rem;
+}
+
+.emptyState {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  font-size: 0.86rem;
+}
+
+@media (max-width: 980px) {
+  .rsuList {
+    max-height: 180px;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  }
+}
