@@ -14,7 +14,7 @@ A hybrid AI traffic management stack built on SUMO simulation that combines **co
 - 🚑 **Emergency Vehicle Priority** - Corridor preemption and optimal routing for emergency vehicles
 - 📡 **V2X Communication** - RSU-based telemetry and vehicle-to-infrastructure messaging
 - 🗺️ **Real City Networks** - Kolkata central area with 19 named RSU locations
-- 🔄 **Hybrid Fusion** - Integrated controller combining all components (+2.6% improvement over baseline)
+- 🔄 **Hybrid Fusion** - Integrated controller combining all components ( +2.6% improvement over baseline )
 
 ## Architecture
 
