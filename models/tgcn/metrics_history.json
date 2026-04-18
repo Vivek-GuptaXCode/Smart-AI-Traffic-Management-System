@@ -1,0 +1,73 @@
+{
+  "train": {
+    "mae": 0.2872113287448883,
+    "rmse": 0.32446712255477905,
+    "mape": 684.8101139068604,
+    "accuracy": 0.9378654970760234,
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1_score": 0.0,
+    "avg_loss": 0.1041327815502882,
+    "total_samples": 1368
+  },
+  "eval": {
+    "mae": 0.0,
+    "rmse": 0.0,
+    "mape": 0.0,
+    "accuracy": 0.0,
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1_score": 0.0,
+    "avg_loss": 0.0,
+    "total_samples": 0
+  },
+  "history": [
+    {
+      "step": 300,
+      "mae": 0.322572261095047,
+      "rmse": 0.37328124046325684,
+      "mape": 882.8388214111328,
+      "accuracy": 0.9649122807017544,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1_score": 0.0,
+      "avg_loss": 0.13843342192471028,
+      "total_samples": 228
+    },
+    {
+      "step": 350,
+      "mae": 0.3160327672958374,
+      "rmse": 0.3581312596797943,
+      "mape": 812.9591941833496,
+      "accuracy": 0.9502923976608187,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1_score": 0.0,
+      "avg_loss": 0.12670891981571913,
+      "total_samples": 684
+    },
+    {
+      "step": 400,
+      "mae": 0.2907488942146301,
+      "rmse": 0.3316008746623993,
+      "mape": 724.9122142791748,
+      "accuracy": 0.9412280701754386,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1_score": 0.0,
+      "avg_loss": 0.10879221390932799,
+      "total_samples": 1140
+    }
+  ],
+  "config": {
+    "hidden_dim": 24,
+    "seq_length": 5,
+    "learning_rate": 0.01,
+    "num_nodes": 19
+  },
+  "training_stats": {
+    "total_steps": 6,
+    "buffer_size": 17,
+    "device": "cuda"
+  }
+}

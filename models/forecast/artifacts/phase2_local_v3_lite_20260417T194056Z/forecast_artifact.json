@@ -1,0 +1,79 @@
+{
+  "artifact_version": "phase2_forecast_artifact_v3_lite",
+  "generated_utc": "2026-04-17T19:40:56+00:00",
+  "target_column": "label_local_congestion_60s",
+  "model": {
+    "name": "lightgbm_local_v3_lite",
+    "kind": "lightgbm",
+    "model_file": "model.pkl",
+    "trusted_local_only": true
+  },
+  "feature_contract": {
+    "version": "v3_lite",
+    "feature_count": 38,
+    "feature_names": [
+      "connected_vehicle_count",
+      "registered_telemetry_count",
+      "packets_received",
+      "bytes_received",
+      "avg_latency_s",
+      "congested_local",
+      "congested_global",
+      "bytes_per_vehicle",
+      "packets_per_vehicle",
+      "lag1_vehicle_count",
+      "lag2_vehicle_count",
+      "lag3_vehicle_count",
+      "lag5_vehicle_count",
+      "lag1_latency",
+      "lag2_latency",
+      "lag1_congested_local",
+      "lag2_congested_local",
+      "lag3_congested_local",
+      "roll5_mean_vehicle",
+      "roll5_std_vehicle",
+      "roll5_max_vehicle",
+      "roll10_mean_vehicle",
+      "roll10_std_vehicle",
+      "roll3_mean_vehicle",
+      "roll5_median_vehicle",
+      "roll5_range_vehicle",
+      "ema_vehicle_count",
+      "roll5_mean_latency",
+      "roll5_std_latency",
+      "diff1_vehicle_count",
+      "diff2_vehicle_count",
+      "velocity_accel_ratio",
+      "congestion_duration",
+      "congestion_onset",
+      "rsu_hash",
+      "time_phase_300s",
+      "hour_sin",
+      "hour_cos"
+    ],
+    "source": "models.forecast.feature_builder_v3_lite"
+  },
+  "dataset": {
+    "file_count": 148,
+    "row_count": 285854,
+    "positive_rate": 0.0759513597850651,
+    "label": "local_congestion_60s"
+  },
+  "cv_config": {
+    "n_splits_actual": 4,
+    "test_size": 360,
+    "gap": 30
+  },
+  "selected_model": {
+    "name": "lightgbm_local_v3_lite",
+    "summary": {
+      "roc_auc_mean": 0.9987405245447143,
+      "fold_count": 4
+    }
+  },
+  "inference_output_contract": {
+    "p_congestion": "float[0,1]",
+    "confidence": "float[0,1]",
+    "uncertainty": "float[0,1]"
+  }
+}
