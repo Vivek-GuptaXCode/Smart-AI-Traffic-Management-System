@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- generated on 2026-04-17 23:31:53 by Eclipse SUMO sumo Version 1.18.0
+<configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/sumoConfiguration.xsd">
+
+    <input>
+        <net-file value="sumo/scenarios/../networks/city.net.xml"/>
+        <route-files value="/home/vivek/research/NIT hackathon/final_year_project/sumo/routes/city_passenger.rou.xml,/home/vivek/research/NIT hackathon/final_year_project/sumo/routes/city_freight.rou.xml,/home/vivek/research/NIT hackathon/final_year_project/sumo/scenarios/demo_controlled_group.rou.xml,/home/vivek/research/NIT hackathon/final_year_project/sumo/scenarios/demo_emergency_group.rou.xml"/>
+        <junction-taz value="true"/>
+    </input>
+
+    <output>
+        <summary-output value="/home/vivek/research/NIT hackathon/final_year_project/evaluation/hackathon_kpi/analysis_repair4_20260417/20260417T180152Z_demo_seed42_summary.xml"/>
+        <tripinfo-output value="/home/vivek/research/NIT hackathon/final_year_project/evaluation/hackathon_kpi/analysis_repair4_20260417/20260417T180152Z_demo_seed42_tripinfo.xml"/>
+        <statistic-output value="/home/vivek/research/NIT hackathon/final_year_project/evaluation/hackathon_kpi/analysis_repair4_20260417/20260417T180152Z_demo_seed42_statistics.xml"/>
+    </output>
+
+    <time>
+        <begin value="0"/>
+        <end value="3600"/>
+        <step-length value="1.0"/>
+    </time>
+
+    <report>
+        <duration-log.disable value="true"/>
+        <no-step-log value="true"/>
+    </report>
+
+    <traci_server>
+        <remote-port value="47891"/>
+    </traci_server>
+
+    <random_number>
+        <seed value="42"/>
+    </random_number>
+
+</configuration>
+-->
+
+<tripinfos xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/tripinfo_file.xsd">
+    <tripinfo id="p_3" depart="5.00" departLane="142575690#7_1" departPos="10.25" departSpeed="12.93" departDelay="0.50" arrival="73.00" arrivalLane="-71028777#2_1" arrivalPos="95.58" arrivalSpeed="12.69" duration="68.00" routeLength="739.22" waitingTime="0.00" waitingCount="0" stopTime="0.00" timeLoss="7.97" rerouteNo="0" devices="tripinfo_p_3" vType="DEFAULT_VEHTYPE" speedFactor="0.93" vaporized=""/>
+    <tripinfo id="t_6" depart="48.00" departLane="-143308505#2_1" departPos="4.73" departSpeed="7.41" departDelay="0.00" arrival="97.00" arrivalLane="142575704#9_1" arrivalPos="52.82" arrivalSpeed="12.79" duration="49.00" routeLength="442.01" waitingTime="0.00" waitingCount="0" stopTime="0.00" timeLoss="12.10" rerouteNo="0" devices="tripinfo_t_6" vType="t__truck" speedFactor="0.93" vaporized=""/>
+    <tripinfo id="p_31" depart="47.00" departLane="-143308505#2_1" departPos="2.85" departSpeed="13.05" departDelay="0.50" arrival="98.00" arrivalLane="172014854#1_1" arrivalPos="37.02" arrivalSpeed="12.85" duration="51.00" routeLength="527.32" waitingTime="3.00" waitingCount="1" stopTime="0.00" timeLoss="9.70" rerouteNo="0" devices="tripinfo_p_31" vType="DEFAULT_VEHTYPE" speedFactor="0.94" vaporized=""/>
+    <tripinfo id="p_9" depart="14.00" departLane="48858193#0_1" departPos="10.55" departSpeed="12.26" departDelay="0.50" arrival="101.00" arrivalLane="314415495#8_1" arrivalPos="34.21" arrivalSpeed="11.82" duration="87.00" routeLength="915.25" waitingTime="0.00" waitingCount="0" stopTime="0.00" timeLoss="10.02" rerouteNo="0" devices="tripinfo_p_9" vType="DEFAULT_VEHTYPE" speedFactor="0.88" vaporized=""/>
+    <tripinfo id="p_27" depart="41.00" departLane="314415495#0_1" departPos="13.65" departSpeed="14.58" departDelay="0.50" arrival="104.00" arrivalLane="142575667#0_2" arrivalPos="94.91" arrivalSpeed="13.53" duration="63.00" routeLength="758.17" waitingTime="0.00" waitingCount="0" stopTime="0.00" timeLoss="8.39" rerouteNo="0" devices="tripinfo_p_27" vType="DEFAULT_VEHTYPE" speedFactor="1.05" vaporized=""/>
+</tripinfos>

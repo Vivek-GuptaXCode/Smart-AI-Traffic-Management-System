@@ -322,6 +322,264 @@
   opacity: 0.78;
 }
 
+.edgeReverseCorridor {
+  --edge-soft-color: rgba(139, 92, 246, 0.28);
+  --edge-core-color: rgba(167, 139, 250, 0.92);
+  --edge-pulse-color: rgba(196, 181, 253, 0.96);
+  opacity: 1;
+  box-shadow: 0 0 10px rgba(139, 92, 246, 0.55);
+}
+
+/* ── Corridor Control Panel ─────────────────────────────── */
+.networkMainWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  height: 100%;
+}
+
+/* ── Corridor Control Panel (Horizontal Toolbar) ───────── */
+.corridorControlPanel {
+  z-index: 16;
+  width: 100%;
+  padding: 16px 20px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(8, 12, 20, 0.6);
+  backdrop-filter: blur(10px);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+.corridorPanelTitle {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: rgba(15, 255, 240, 0.9);
+  text-transform: uppercase;
+}
+
+.corridorControlsRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 20px;
+}
+
+.corridorInputGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.corridorInputLabel {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.corridorSelect {
+  width: 180px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 0.8rem;
+  padding: 8px 12px;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.corridorSelect:focus {
+  border-color: var(--accent-cyan);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.corridorSelect option {
+  background-color: #0a0f1a; /* Solid dark background for the dropdown list */
+  color: #f8fafc;
+  padding: 8px;
+}
+
+.corridorHoldWrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.corridorHoldInput {
+  width: 70px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 0.8rem;
+  padding: 8px 12px;
+  text-align: center;
+  outline: none;
+}
+
+.corridorInputSuffix {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.corridorBtnGroup {
+  display: flex;
+  gap: 8px;
+}
+
+.corridorBtnForward, .corridorBtnReverse {
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 100px;
+}
+
+.corridorBtnForward {
+  border: 1px solid rgba(34, 197, 94, 0.4);
+  background: rgba(34, 197, 94, 0.1);
+  color: #4ade80;
+}
+
+.corridorBtnForward:hover:not(:disabled) {
+  background: rgba(34, 197, 94, 0.2);
+  box-shadow: 0 0 12px rgba(34, 197, 94, 0.2);
+}
+
+.corridorBtnReverse {
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  background: rgba(139, 92, 246, 0.1);
+  color: #a78bfa;
+}
+
+.corridorBtnReverse:hover:not(:disabled) {
+  background: rgba(139, 92, 246, 0.2);
+  box-shadow: 0 0 12px rgba(139, 92, 246, 0.2);
+}
+
+/* Active Strip (Horizontal) */
+.corridorActiveStrip {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.corridorActiveListHorizontal {
+  flex: 1;
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px; /* for scrollbar */
+}
+
+/* Custom scrollbar for horizontal list */
+.corridorActiveListHorizontal::-webkit-scrollbar {
+  height: 4px;
+}
+.corridorActiveListHorizontal::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.02);
+}
+.corridorActiveListHorizontal::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+}
+
+.corridorActiveChip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  white-space: nowrap;
+}
+
+.corridorBadge {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.corridorBadgeForward {
+  background: rgba(52, 211, 153, 0.95);
+  box-shadow: 0 0 5px rgba(52, 211, 153, 0.6);
+}
+
+.corridorBadgeReverse {
+  background: rgba(167, 139, 250, 0.95);
+  box-shadow: 0 0 5px rgba(167, 139, 250, 0.6);
+}
+
+.corridorBadgeUnknown {
+  background: rgba(15, 255, 240, 0.7);
+}
+
+.corridorActiveLabel {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+}
+
+.corridorRemoveBtn {
+  background: none;
+  border: none;
+  color: rgba(239, 68, 68, 0.8);
+  font-size: 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  padding: 0;
+  line-height: 1;
+}
+
+.corridorRemoveBtn:hover {
+  color: #ef4444;
+}
+
+.corridorClearAllBtnCompact {
+  flex-shrink: 0;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  background: rgba(239, 68, 68, 0.05);
+  color: #fca5a5;
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.corridorClearAllBtnCompact:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+}
+
+.corridorEmptyMsgRow {
+  font-size: 0.65rem;
+  color: rgba(255, 255, 255, 0.2);
+  font-style: italic;
+}
+
+
+.corridorDivider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.07);
+  margin: 2px 0;
+}
+
+
+
 .edgePulse {
   position: absolute;
   top: 0;
@@ -407,12 +665,6 @@
   line-height: 1.4;
 }
 
-.corridorControlPanel {
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
 
 .corridorForm {
   display: grid;

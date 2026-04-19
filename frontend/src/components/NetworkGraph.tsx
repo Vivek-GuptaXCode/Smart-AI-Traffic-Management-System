@@ -121,9 +121,14 @@ interface NetworkGraphProps {
 export default function NetworkGraph({ selectedNodeId, onNodeClick, serverUrl }: NetworkGraphProps) {
   const { nodes, edges, congestionState, greenCorridorByRsu, activeCorridors, triggerGreenCorridor, clearGreenCorridors, addSystemEvent } = useTrafficStore();
   const [dimensions, setDimensions] = useState({ width: 800, height: 400 });
-  const [corridorStartNodeId, setCorridorStartNodeId] = useState<string | null>(null);
-  const [corridorEndNodeIds, setCorridorEndNodeIds] = useState<string[]>([]);
+
+  // Corridor control panel state
+  const [dropdownSource, setDropdownSource] = useState<string>('');
+  const [dropdownDest, setDropdownDest] = useState<string>('');
+  const [holdSeconds, setHoldSeconds] = useState<number>(120);
   const [isApplyingCorridor, setIsApplyingCorridor] = useState(false);
+  // Tracks which corridor_ids were created as 'reverse' (purple) vs 'forward' (green)
+  const [directedCorridorMap, setDirectedCorridorMap] = useState<Map<string, 'forward' | 'reverse'>>(new Map());
 
   const nodePositions = useMemo(() => {
     const posMap: Record<string, { x: number, y: number }> = {};
@@ -135,13 +140,13 @@ export default function NetworkGraph({ selectedNodeId, onNodeClick, serverUrl }:
     let hasCoords = false;
 
     nodes.forEach(n => {
-       if (n.x !== undefined && n.y !== undefined) {
-           hasCoords = true;
-           minX = Math.min(minX, n.x);
-           maxX = Math.max(maxX, n.x);
-           minY = Math.min(minY, n.y);
-           maxY = Math.max(maxY, n.y);
-       }
+      if (n.x !== undefined && n.y !== undefined) {
+        hasCoords = true;
+        minX = Math.min(minX, n.x);
+        maxX = Math.max(maxX, n.x);
+        minY = Math.min(minY, n.y);
+        maxY = Math.max(maxY, n.y);
+      }
     });
 
     const rangeX = (maxX - minX) || 1;
@@ -151,12 +156,12 @@ export default function NetworkGraph({ selectedNodeId, onNodeClick, serverUrl }:
       let x, y;
 
       if (hasCoords && node.x !== undefined && node.y !== undefined) {
-          // Normalize coordinates independently for X and Y to fill container
-          const nx = (node.x - minX) / rangeX;
-          const ny = (node.y - minY) / rangeY;
-          // Flip Y for DOM coordinates
-          x = padding + (nx * (dimensions.width - padding * 2));
-          y = dimensions.height - padding - (ny * (dimensions.height - padding * 2));
+        // Normalize coordinates independently for X and Y to fill container
+        const nx = (node.x - minX) / rangeX;
+        const ny = (node.y - minY) / rangeY;
+        // Flip Y for DOM coordinates
+        x = padding + (nx * (dimensions.width - padding * 2));
+        y = dimensions.height - padding - (ny * (dimensions.height - padding * 2));
       } else {
         // Fallback for nodes without coordinates
         const seed = node.id.charCodeAt(0) + i;
@@ -195,341 +200,352 @@ export default function NetworkGraph({ selectedNodeId, onNodeClick, serverUrl }:
     [nodes],
   );
 
-  const activeCorridorStartNodeId = (
-    corridorStartNodeId && availableNodeIds.has(corridorStartNodeId)
-      ? corridorStartNodeId
-      : null
+  const normalizedServerUrl = String(serverUrl ?? '').trim();
+
+  // Sorted node list for dropdowns
+  const sortedNodes = useMemo(
+    () => [...nodes].sort((a, b) => {
+      const nameA = String(a.display_name ?? a.id);
+      const nameB = String(b.display_name ?? b.id);
+      return nameA.localeCompare(nameB);
+    }),
+    [nodes],
   );
 
-  const activeCorridorEndNodeIds = useMemo(
-    () => corridorEndNodeIds.filter((id) => availableNodeIds.has(id)),
-    [corridorEndNodeIds, availableNodeIds],
-  );
-
-  // When no local selection, derive highlighted paths from ALL server corridors
-  const serverCorridorRsuIds = useMemo(() => {
-    if (activeCorridors.length === 0) return [];
-    const allIds = new Set<string>();
-    activeCorridors.forEach((c) => {
-      c.rsu_ids.filter((id) => availableNodeIds.has(id)).forEach((id) => allIds.add(id));
-    });
-    return Array.from(allIds);
-  }, [activeCorridors, availableNodeIds]);
-
-  // Compute edge keys for ALL server corridors (preserving path order)
-  const serverCorridorEdgeKeys = useMemo(() => {
+  // Edge key sets split by direction for colour coding
+  const forwardEdgeKeys = useMemo(() => {
     const keys = new Set<string>();
     activeCorridors.forEach((c) => {
-      const ids = c.rsu_ids.filter((id) => availableNodeIds.has(id));
-      for (let i = 0; i < ids.length - 1; i++) {
-        keys.add(buildUndirectedEdgeKey(ids[i], ids[i + 1]));
+      if (directedCorridorMap.get(c.corridor_id) !== 'reverse') {
+        const ids = c.rsu_ids.filter((id) => availableNodeIds.has(id));
+        for (let i = 0; i < ids.length - 1; i++) keys.add(buildUndirectedEdgeKey(ids[i], ids[i + 1]));
       }
     });
     return keys;
-  }, [activeCorridors, availableNodeIds]);
+  }, [activeCorridors, directedCorridorMap, availableNodeIds]);
 
-  // Compute Dijkstra paths for ALL local corridor pairs (forward only — reverse uses same edges)
-  const allLocalCorridorPaths = useMemo(() => {
-    if (!activeCorridorStartNodeId || activeCorridorEndNodeIds.length === 0) return [];
-    const paths: string[][] = [];
-    for (const endId of activeCorridorEndNodeIds) {
-      const path = findShortestPathDijkstra(activeCorridorStartNodeId, endId, edges, nodePositions);
-      if (path.length > 1) paths.push(path);
-    }
-    return paths;
-  }, [activeCorridorStartNodeId, activeCorridorEndNodeIds, edges, nodePositions]);
-
-  // Union of all corridor node IDs (local paths + server corridors)
-  const corridorPathNodeIds = useMemo(() => {
-    const allIds = new Set<string>();
-    // Local paths
-    allLocalCorridorPaths.forEach((path) => path.forEach((id) => allIds.add(id)));
-    // Server corridors (when no local selection)
-    serverCorridorRsuIds.forEach((id) => allIds.add(id));
-    return Array.from(allIds);
-  }, [allLocalCorridorPaths, serverCorridorRsuIds]);
-
-  const corridorPathNodeSet = useMemo(
-    () => new Set(corridorPathNodeIds),
-    [corridorPathNodeIds],
-  );
-
-  // Union of all corridor edge keys (local + server)
-  const corridorPathEdgeKeys = useMemo(() => {
-    const nextKeys = new Set<string>();
-    // Local paths
-    allLocalCorridorPaths.forEach((path) => {
-      for (let i = 0; i < path.length - 1; i++) {
-        nextKeys.add(buildUndirectedEdgeKey(path[i], path[i + 1]));
+  const reverseEdgeKeys = useMemo(() => {
+    const keys = new Set<string>();
+    activeCorridors.forEach((c) => {
+      if (directedCorridorMap.get(c.corridor_id) === 'reverse') {
+        const ids = c.rsu_ids.filter((id) => availableNodeIds.has(id));
+        for (let i = 0; i < ids.length - 1; i++) keys.add(buildUndirectedEdgeKey(ids[i], ids[i + 1]));
       }
     });
-    // Server corridors
-    serverCorridorEdgeKeys.forEach((key) => nextKeys.add(key));
-    return nextKeys;
-  }, [allLocalCorridorPaths, serverCorridorEdgeKeys]);
+    return keys;
+  }, [activeCorridors, directedCorridorMap, availableNodeIds]);
 
-  const hasCorridorSelection = Boolean(corridorStartNodeId && corridorEndNodeIds.length > 0);
-  const hasValidCorridorPath = corridorPathNodeIds.length > 1;
-  const totalCorridorHops = allLocalCorridorPaths.reduce(
-    (sum, path) => sum + Math.max(0, path.length - 1), 0,
-  );
-  const normalizedServerUrl = String(serverUrl ?? '').trim();
+  // All nodes that sit on any active corridor path (for node highlight)
+  const corridorPathNodeSet = useMemo(() => {
+    const s = new Set<string>();
+    activeCorridors.forEach((c) => c.rsu_ids.filter((id) => availableNodeIds.has(id)).forEach((id) => s.add(id)));
+    return s;
+  }, [activeCorridors, availableNodeIds]);
 
-  // Activate a corridor pair: forward + reverse (reverse takes a different route)
-  const activateBidirectionalCorridor = useCallback(async (sourceNodeId: string, destinationNodeId: string) => {
-    if (!normalizedServerUrl) {
-      addSystemEvent('Server URL unavailable.', 'system');
-      return;
-    }
+  // Prune direction map when corridors expire / are cleared externally
+  useEffect(() => {
+    const activeCids = new Set(activeCorridors.map((c) => c.corridor_id));
+    setDirectedCorridorMap((prev) => {
+      let changed = false;
+      const next = new Map(prev);
+      for (const cid of next.keys()) {
+        if (!activeCids.has(cid)) { next.delete(cid); changed = true; }
+      }
+      return changed ? next : prev;
+    });
+  }, [activeCorridors]);
 
+  // ── Corridor actions ───────────────────────────────────────────
+  const canActivate = Boolean(dropdownSource && dropdownDest && dropdownSource !== dropdownDest && normalizedServerUrl);
+
+  const handleCreateForward = useCallback(async () => {
+    if (!canActivate) return;
     setIsApplyingCorridor(true);
     try {
-      // Forward corridor: source → destination
-      const fwdResult = await triggerGreenCorridor(normalizedServerUrl, {
-        anchor_rsu_id: sourceNodeId,
-        source_rsu_id: sourceNodeId,
-        destination_rsu_id: destinationNodeId,
-        hold_seconds: 120,
+      const result = await triggerGreenCorridor(normalizedServerUrl, {
+        anchor_rsu_id: dropdownSource,
+        source_rsu_id: dropdownSource,
+        destination_rsu_id: dropdownDest,
+        hold_seconds: holdSeconds,
         persistent: true,
-        reason: 'manual_tactical_corridor',
+        reason: 'manual_forward_corridor',
         created_by: 'hub_commander',
       });
-
-      if (fwdResult.ok) {
-        addSystemEvent(`Corridor Active: ${sourceNodeId} → ${destinationNodeId}`, 'corridor', sourceNodeId);
+      if (result.ok && result.corridor_id) {
+        setDirectedCorridorMap((prev) => new Map(prev).set(result.corridor_id!, 'forward'));
+        addSystemEvent(`Forward Corridor: ${dropdownSource} → ${dropdownDest}`, 'corridor', dropdownSource);
       } else {
-        addSystemEvent(`Corridor failed: ${fwdResult.message}`, 'alert');
-      }
-
-      // Build avoid_edges from the forward path so the reverse takes a different route
-      const fwdRsuIds = fwdResult.rsu_ids ?? [];
-      const avoidEdges: [string, string][] = [];
-      for (let i = 0; i < fwdRsuIds.length - 1; i++) {
-        avoidEdges.push([fwdRsuIds[i], fwdRsuIds[i + 1]]);
-      }
-
-      // Reverse corridor: destination → source (avoiding forward path edges)
-      const revResult = await triggerGreenCorridor(normalizedServerUrl, {
-        anchor_rsu_id: destinationNodeId,
-        source_rsu_id: destinationNodeId,
-        destination_rsu_id: sourceNodeId,
-        hold_seconds: 120,
-        persistent: true,
-        reason: 'manual_tactical_corridor_reverse',
-        created_by: 'hub_commander',
-        ...(avoidEdges.length > 0 ? { avoid_edges: avoidEdges } : {}),
-      });
-
-      if (revResult.ok) {
-        addSystemEvent(`Reverse Corridor Active: ${destinationNodeId} → ${sourceNodeId}`, 'corridor', destinationNodeId);
-      } else {
-        addSystemEvent(`Reverse corridor failed: ${revResult.message}`, 'alert');
+        addSystemEvent(`Forward corridor failed: ${result.message}`, 'alert');
       }
     } finally {
       setIsApplyingCorridor(false);
     }
-  }, [normalizedServerUrl, triggerGreenCorridor, addSystemEvent]);
+  }, [canActivate, dropdownSource, dropdownDest, holdSeconds, normalizedServerUrl, triggerGreenCorridor, addSystemEvent]);
+
+  const handleCreateReverse = useCallback(async () => {
+    if (!canActivate) return;
+    // Use existing forward corridor's path as avoid_edges so reverse takes a different route
+    const existingFwd = activeCorridors.find(
+      (c) => c.source_rsu_id === dropdownSource && c.destination_rsu_id === dropdownDest,
+    );
+    const avoidEdges: [string, string][] = [];
+    if (existingFwd) {
+      for (let i = 0; i < existingFwd.rsu_ids.length - 1; i++) {
+        avoidEdges.push([existingFwd.rsu_ids[i], existingFwd.rsu_ids[i + 1]]);
+      }
+    }
+    setIsApplyingCorridor(true);
+    try {
+      const result = await triggerGreenCorridor(normalizedServerUrl, {
+        anchor_rsu_id: dropdownDest,
+        source_rsu_id: dropdownDest,
+        destination_rsu_id: dropdownSource,
+        hold_seconds: holdSeconds,
+        persistent: true,
+        reason: 'manual_reverse_corridor',
+        created_by: 'hub_commander',
+        ...(avoidEdges.length > 0 ? { avoid_edges: avoidEdges } : {}),
+      });
+      if (result.ok && result.corridor_id) {
+        setDirectedCorridorMap((prev) => new Map(prev).set(result.corridor_id!, 'reverse'));
+        addSystemEvent(`Reverse Corridor: ${dropdownDest} → ${dropdownSource}`, 'corridor', dropdownDest);
+      } else {
+        addSystemEvent(`Reverse corridor failed: ${result.message}`, 'alert');
+      }
+    } finally {
+      setIsApplyingCorridor(false);
+    }
+  }, [canActivate, dropdownSource, dropdownDest, holdSeconds, normalizedServerUrl, triggerGreenCorridor, addSystemEvent, activeCorridors]);
+
+  const handleRemoveCorridor = useCallback(async (corridorId: string) => {
+    await clearGreenCorridors(normalizedServerUrl, { corridorId });
+    setDirectedCorridorMap((prev) => { const n = new Map(prev); n.delete(corridorId); return n; });
+  }, [normalizedServerUrl, clearGreenCorridors]);
+
+  const handleClearAll = useCallback(async () => {
+    await clearGreenCorridors(normalizedServerUrl);
+    setDirectedCorridorMap(new Map());
+    addSystemEvent('All corridors cleared.', 'system');
+  }, [normalizedServerUrl, clearGreenCorridors, addSystemEvent]);
 
   const handleRsuNodeClick = (e: React.MouseEvent, nodeId: string) => {
     e.stopPropagation();
     onNodeClick?.(nodeId);
-
-    // Non-shift click when source is already set: just update spotlight, no corridor logic
-    if (!e.shiftKey && corridorStartNodeId) {
-      return;
-    }
-
-    // First click (no source set): set source and clear all existing corridors
-    if (!corridorStartNodeId) {
-      setCorridorStartNodeId(nodeId);
-      setCorridorEndNodeIds([]);
-      if (normalizedServerUrl) {
-        void clearGreenCorridors(normalizedServerUrl);
-      }
-      addSystemEvent(`Source Selected: ${nodeId}. Shift+Click to add destinations.`, 'system', nodeId);
-      return;
-    }
-
-    // Click on source node again: deselect all
-    if (nodeId === corridorStartNodeId) {
-      setCorridorStartNodeId(null);
-      setCorridorEndNodeIds([]);
-      addSystemEvent(`Source Deselected: ${nodeId}`, 'system');
-      return;
-    }
-
-    // Shift+Click on existing destination: toggle it off
-    if (corridorEndNodeIds.includes(nodeId)) {
-      setCorridorEndNodeIds((prev) => prev.filter((id) => id !== nodeId));
-      addSystemEvent(`Destination Removed: ${nodeId}`, 'system');
-      return;
-    }
-
-    // Shift+Click on new node: add as destination and create bidirectional corridors
-    setCorridorEndNodeIds((prev) => [...prev, nodeId]);
-    void activateBidirectionalCorridor(corridorStartNodeId, nodeId);
   };
 
-  const resetCorridorSelection = () => {
-    setCorridorStartNodeId(null);
-    setCorridorEndNodeIds([]);
-    addSystemEvent('All corridors cleared.', 'system');
-    if (normalizedServerUrl) {
-      void clearGreenCorridors(normalizedServerUrl);
-    }
-  };
-
-  const displayNodes = nodes;
-
-  // Build hint panel text
-  const hintPanelText = useMemo(() => {
-    // Server corridors (no local selection active)
-    if (serverCorridorRsuIds.length > 0 && !activeCorridorStartNodeId) {
-      const total = activeCorridors.length;
-      const pairs = activeCorridors.map((c) => {
-        const src = c.source_rsu_id || c.anchor_rsu_id;
-        const dst = c.destination_rsu_id;
-        return dst ? `${src} → ${dst}` : src;
-      });
-      const uniquePairs = [...new Set(pairs)];
-      if (uniquePairs.length <= 2) {
-        return `${total} Corridor${total > 1 ? 's' : ''}: ${uniquePairs.join(', ')}`;
-      }
-      return `${total} Corridors Active (${uniquePairs.length} routes)`;
-    }
-
-    // Local selection: no destinations yet
-    if (activeCorridorStartNodeId && activeCorridorEndNodeIds.length === 0) {
-      return `Source: ${activeCorridorStartNodeId}. Shift+Click to add destinations.`;
-    }
-
-    // Local selection: has destinations
-    if (activeCorridorStartNodeId && activeCorridorEndNodeIds.length > 0) {
-      const destList = activeCorridorEndNodeIds.join(', ');
-      return `${activeCorridorEndNodeIds.length * 2} Corridors: ${activeCorridorStartNodeId} ↔ ${destList} (${totalCorridorHops} hops, fwd + alt return)`;
-    }
-
-    return '';
-  }, [serverCorridorRsuIds, activeCorridorStartNodeId, activeCorridorEndNodeIds, activeCorridors, totalCorridorHops]);
-
-  const showHintPanel = Boolean(
-    activeCorridorStartNodeId || hasCorridorSelection || serverCorridorRsuIds.length > 0,
-  );
+  const getDisplayName = useCallback((nodeId: string) => {
+    const node = nodes.find((n) => n.id === nodeId);
+    return String(node?.display_name ?? nodeId).trim() || nodeId;
+  }, [nodes]);
 
   return (
-    <div id="network-container" className={`${styles.glassPanel} ${styles.networkContainer}`} style={{ width: '100%', height: '100%', position: 'relative' }}>
+    <div className={styles.networkMainWrapper}>
+      {/* ── Corridor Control Panel ─────────────────────────── */}
+      <div className={styles.corridorControlPanel}>
+        <div className={styles.corridorPanelTitle}>Green Corridor Control</div>
 
-      {/* 3D Perspective Glowing Grid Background */}
-      <div className={styles.gridPerspective}>
-        <div className={styles.gridPlane}></div>
+        <div className={styles.corridorControlsRow}>
+          {/* Source dropdown */}
+          <div className={styles.corridorInputGroup}>
+            <span className={styles.corridorInputLabel}>Source</span>
+            <select
+              className={styles.corridorSelect}
+              value={dropdownSource}
+              onChange={(e) => setDropdownSource(e.target.value)}
+            >
+              <option value="">— select —</option>
+              {sortedNodes.map((n) => (
+                <option key={n.id} value={n.id}>
+                  {String(n.display_name ?? n.id)}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Destination dropdown */}
+          <div className={styles.corridorInputGroup}>
+            <span className={styles.corridorInputLabel}>Dest</span>
+            <select
+              className={styles.corridorSelect}
+              value={dropdownDest}
+              onChange={(e) => setDropdownDest(e.target.value)}
+            >
+              <option value="">— select —</option>
+              {sortedNodes
+                .filter((n) => n.id !== dropdownSource)
+                .map((n) => (
+                  <option key={n.id} value={n.id}>
+                    {String(n.display_name ?? n.id)}
+                  </option>
+                ))}
+            </select>
+          </div>
+
+          {/* Hold seconds */}
+          <div className={styles.corridorInputGroup}>
+            <span className={styles.corridorInputLabel}>Hold</span>
+            <div className={styles.corridorHoldWrapper}>
+              <input
+                type="number"
+                className={styles.corridorHoldInput}
+                min={10}
+                max={3600}
+                value={holdSeconds}
+                onChange={(e) => setHoldSeconds(Math.max(10, Math.min(3600, Number(e.target.value))))}
+              />
+              <span className={styles.corridorInputSuffix}>s</span>
+            </div>
+          </div>
+
+          {/* Action buttons */}
+          <div className={styles.corridorBtnGroup}>
+            <button
+              className={styles.corridorBtnForward}
+              disabled={!canActivate || isApplyingCorridor}
+              onClick={handleCreateForward}
+              title={`Create green corridor: ${dropdownSource || '?'} → ${dropdownDest || '?'}`}
+            >
+              → Forward
+            </button>
+            <button
+              className={styles.corridorBtnReverse}
+              disabled={!canActivate || isApplyingCorridor}
+              onClick={handleCreateReverse}
+              title={`Create purple return corridor: ${dropdownDest || '?'} → ${dropdownSource || '?'}`}
+            >
+              ← Reverse
+            </button>
+          </div>
+        </div>
+
+        {/* Active corridors strip */}
+        {activeCorridors.length > 0 && (
+          <div className={styles.corridorActiveStrip}>
+            <div className={styles.corridorActiveListHorizontal}>
+              {activeCorridors.map((c) => {
+                const dir = directedCorridorMap.get(c.corridor_id);
+                const src = c.source_rsu_id || c.anchor_rsu_id;
+                const dst = c.destination_rsu_id;
+                const label = dst ? `${getDisplayName(src)} → ${getDisplayName(dst)}` : getDisplayName(src);
+                return (
+                  <div key={c.corridor_id} className={styles.corridorActiveChip}>
+                    <div className={`${styles.corridorBadge} ${dir === 'reverse' ? styles.corridorBadgeReverse : dir === 'forward' ? styles.corridorBadgeForward : styles.corridorBadgeUnknown}`} />
+                    <span className={styles.corridorActiveLabel} title={label}>{label}</span>
+                    <button
+                      className={styles.corridorRemoveBtn}
+                      onClick={() => void handleRemoveCorridor(c.corridor_id)}
+                      title="Remove this corridor"
+                    >
+                      ×
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+            <button
+              className={styles.corridorClearAllBtnCompact}
+              disabled={isApplyingCorridor}
+              onClick={() => void handleClearAll()}
+            >
+              Clear All
+            </button>
+          </div>
+        )}
+
+        {/* {activeCorridors.length === 0 && (
+          <div className={styles.corridorEmptyMsgRow}>No active corridors</div>
+        )} */}
       </div>
 
-      {/* Corridor Hint Panel — supports multi-destination corridors */}
-      {showHintPanel && (
-        <div className={styles.corridorHintPanel}>
-          <span className={styles.corridorHintText}>
-            {hintPanelText}
-          </span>
-          <button
-            className={styles.corridorResetButton}
-            onClick={resetCorridorSelection}
-            disabled={isApplyingCorridor}
-          >
-            Clear All
-          </button>
+      <div id="network-container" className={`${styles.glassPanel} ${styles.networkContainer}`} style={{ width: '100%', height: '100%', position: 'relative' }}>
+        {/* 3D Perspective Glowing Grid Background */}
+        <div className={styles.gridPerspective}>
+          <div className={styles.gridPlane}></div>
         </div>
-      )}
 
-      {/* Edges */}
-      {edges.map((edge, i) => {
-        const fromPos = nodePositions[edge.from];
-        const toPos = nodePositions[edge.to];
 
-        if (!fromPos || !toPos) return null;
+        {/* Edges */}
+        {edges.map((edge, i) => {
+          const fromPos = nodePositions[edge.from];
+          const toPos = nodePositions[edge.to];
+          if (!fromPos || !toPos) return null;
 
-        const dx = toPos.x - fromPos.x;
-        const dy = toPos.y - fromPos.y;
-        const length = Math.sqrt(dx * dx + dy * dy);
-        const angle = Math.atan2(dy, dx) * 180 / Math.PI;
-        const isCorridorEdge = corridorPathEdgeKeys.has(buildUndirectedEdgeKey(edge.from, edge.to));
-        const showCorridorHighlight = hasCorridorSelection || serverCorridorRsuIds.length > 0;
-        const edgeClassName = showCorridorHighlight
-          ? `${styles.edge} ${isCorridorEdge ? styles.edgeGreenCorridor : styles.edgeOutOfCorridor}`
-          : styles.edge;
+          const dx = toPos.x - fromPos.x;
+          const dy = toPos.y - fromPos.y;
+          const length = Math.sqrt(dx * dx + dy * dy);
+          const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+          const edgeKey = buildUndirectedEdgeKey(edge.from, edge.to);
+          const isFwd = forwardEdgeKeys.has(edgeKey);
+          const isRev = reverseEdgeKeys.has(edgeKey);
+          const hasCorridors = activeCorridors.length > 0;
 
-        return (
-          <div
-            key={`edge-${i}`}
-            className={edgeClassName}
-            style={{
-              left: fromPos.x + 20, // center alignment (+ half node width)
-              top: fromPos.y + 20,
-              width: length,
-              height: 2,
-              transform: `rotate(${angle}deg)`
-            }}
-          >
-            <div className={styles.edgePulse} />
-          </div>
-        );
-      })}
+          let edgeClassName: string;
+          if (isFwd) {
+            edgeClassName = `${styles.edge} ${styles.edgeGreenCorridor}`;
+          } else if (isRev) {
+            edgeClassName = `${styles.edge} ${styles.edgeReverseCorridor}`;
+          } else if (hasCorridors) {
+            edgeClassName = `${styles.edge} ${styles.edgeOutOfCorridor}`;
+          } else {
+            edgeClassName = styles.edge;
+          }
 
-      {/* Nodes */}
-      {displayNodes.map((node) => {
-        const pos = nodePositions[node.id];
-        if (!pos) return null;
-
-        const isCongested = congestionState[node.id]?.isCongested;
-        const isGreenCorridor = Boolean(greenCorridorByRsu[node.id]);
-        const isSelected = selectedNodeId === node.id;
-        const isCorridorStart = activeCorridorStartNodeId === node.id;
-        const isCorridorEnd = activeCorridorEndNodeIds.includes(node.id);
-        const isOnCorridorPath = corridorPathNodeSet.has(node.id);
-        const nodeDisplayName = String(node.display_name ?? '').trim() || `RSU ${node.id}`;
-        const nodeShortLabel = nodeDisplayName.slice(0, 3).toUpperCase();
-
-        const nodeStatusTitle = isCorridorStart
-          ? 'CORRIDOR SOURCE'
-          : (isCorridorEnd
-            ? 'CORRIDOR DESTINATION'
-            : (isOnCorridorPath
-              ? 'IN CORRIDOR PATH'
-              : (isGreenCorridor
-                ? 'GREEN CORRIDOR'
-                : (isCongested ? 'CONGESTED' : 'CLEAR'))));
-
-        return (
-          <motion.div
-            key={node.id}
-            className={`${styles.node} ${isCongested ? styles.congested : ''} ${isGreenCorridor ? styles.greenCorridor : ''} ${isSelected ? styles.selectedNode : ''} ${isOnCorridorPath ? styles.corridorPathNode : ''} ${isCorridorStart ? styles.corridorStartNode : ''} ${isCorridorEnd ? styles.corridorEndNode : ''}`}
-            style={{ left: pos.x, top: pos.y }}
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: 'spring', stiffness: 200, damping: 20 }}
-            whileHover={{ scale: 1.1, zIndex: 20 }}
-            onClick={(e) => handleRsuNodeClick(e, node.id)}
-          >
-            {isCongested && (
-              <div className={`${styles.nodePulse} animate-pulse-ring`} />
-            )}
-            <span className={styles.nodeLabel}>
-              {nodeShortLabel}
-            </span>
-            <span className={styles.nodeName}>
-              {nodeDisplayName}
-            </span>
-
+          return (
             <div
-              title={`${nodeDisplayName} - ${nodeStatusTitle}`}
-              style={{ position: 'absolute', width: '100%', height: '100%' }}
-            />
-          </motion.div>
-        );
-      })}
+              key={`edge-${i}`}
+              className={edgeClassName}
+              style={{
+                left: fromPos.x + 20,
+                top: fromPos.y + 20,
+                width: length,
+                height: 2,
+                transform: `rotate(${angle}deg)`,
+              }}
+            >
+              <div className={styles.edgePulse} />
+            </div>
+          );
+        })}
 
-      {displayNodes.length === 0 && (
-        <div style={{ color: 'var(--text-secondary)', zIndex: 10 }}>Waiting for RSU Graph from Server...</div>
-      )}
+        {/* Nodes */}
+        {nodes.map((node) => {
+          const pos = nodePositions[node.id];
+          if (!pos) return null;
+
+          const isCongested = congestionState[node.id]?.isCongested;
+          const isGreenCorridor = Boolean(greenCorridorByRsu[node.id]);
+          const isSelected = selectedNodeId === node.id;
+          const isOnCorridorPath = corridorPathNodeSet.has(node.id);
+          const nodeDisplayName = String(node.display_name ?? '').trim() || `RSU ${node.id}`;
+          const nodeShortLabel = nodeDisplayName.slice(0, 3).toUpperCase();
+
+          const nodeStatusTitle = isOnCorridorPath
+            ? 'IN CORRIDOR PATH'
+            : (isGreenCorridor ? 'GREEN CORRIDOR' : (isCongested ? 'CONGESTED' : 'CLEAR'));
+
+          return (
+            <motion.div
+              key={node.id}
+              className={`${styles.node} ${isCongested ? styles.congested : ''} ${isGreenCorridor ? styles.greenCorridor : ''} ${isSelected ? styles.selectedNode : ''} ${isOnCorridorPath ? styles.corridorPathNode : ''}`}
+              style={{ left: pos.x, top: pos.y }}
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ type: 'spring', stiffness: 200, damping: 20 }}
+              whileHover={{ scale: 1.1, zIndex: 20 }}
+              onClick={(e) => handleRsuNodeClick(e, node.id)}
+              title={`${nodeDisplayName} - ${nodeStatusTitle}`}
+            >
+              {isCongested && <div className={`${styles.nodePulse} animate-pulse-ring`} />}
+              <span className={styles.nodeLabel}>{nodeShortLabel}</span>
+              <span className={styles.nodeName}>{nodeDisplayName}</span>
+            </motion.div>
+          );
+        })}
+
+        {nodes.length === 0 && (
+          <div style={{ color: 'var(--text-secondary)', zIndex: 10 }}>Waiting for RSU Graph from Server...</div>
+        )}
+      </div>
     </div>
   );
 }

@@ -1,0 +1,38 @@
+{
+  "version": "1.0",
+  "profiles": {
+    "local_smoke": {
+      "description": "Small local run for pipeline and model sanity checks.",
+      "max_rows": 5000,
+      "epochs": 1,
+      "batch_size": 16,
+      "cross_validation": false,
+      "seeds": [11],
+      "purpose": "debug_only"
+    },
+    "local_full": {
+      "description": "Primary local training profile for benchmark reporting.",
+      "max_rows": null,
+      "epochs": 30,
+      "batch_size": 64,
+      "cross_validation": true,
+      "seeds": [11, 17, 23, 31, 47],
+      "purpose": "publication"
+    },
+    "phase4_medium_single_improved_v1": {
+      "description": "Locked Phase 4 profile that passed medium local gates; use before Phase 5 ablations.",
+      "phase": 4,
+      "scenario": "demo",
+      "trainer": "controllers/rl/train_phase4.py",
+      "profile": "medium",
+      "mode": "single_tls",
+      "use_improved_dqn": true,
+      "eval_episodes": 2,
+      "seed": 42,
+      "output_dir": "models/rl/artifacts",
+      "results_path": "evaluation/phase4_kpi_results_medium_single_improved_fix.json",
+      "purpose": "phase5_prerequisite",
+      "notes": "Expected gate outcome: P4.1/P4.2/P4.3/P4.4 PASS on medium local run."
+    }
+  }
+}

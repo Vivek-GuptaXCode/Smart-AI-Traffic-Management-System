@@ -84,6 +84,7 @@ interface ActionResult {
   ok: boolean;
   message: string;
   rsu_ids?: string[];
+  corridor_id?: string;
 }
 
 const GRAPH_FETCH_LOG_INTERVAL_MS = 15000;
@@ -649,6 +650,7 @@ export const useTrafficStore = create<TrafficState>((set, get) => ({
         ok: true,
         message: `Green corridor activated for ${anchorRsuId}.`,
         rsu_ids: corridor?.rsu_ids ?? [],
+        corridor_id: corridor?.corridor_id,
       };
     } catch (error) {
       console.error('Failed to activate green corridor:', error);
