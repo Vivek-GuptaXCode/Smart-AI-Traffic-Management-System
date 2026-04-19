@@ -684,6 +684,36 @@ def graph_endpoint():
     return jsonify(data)
 
 
+@app.route("/signals/<string:rsu_id>", methods=["GET"])
+def rsu_spotlight_endpoint(rsu_id: str):
+    """Return real-time spotlight data for a single RSU.
+
+    Includes corridor membership and live metrics from the last batch.
+    """
+    rsu_id = str(rsu_id).strip()
+    if rsu_id not in rsu_graph:
+        return jsonify({"status": "error", "message": f"Unknown RSU: {rsu_id}"}), 404
+
+    now_epoch = _now_epoch_seconds()
+    active_for_rsu = _active_green_corridors_for_rsu(rsu_id, now_epoch)
+    all_active = _list_active_green_corridors(now_epoch)
+
+    response: dict = {
+        "status": "ok",
+        "rsu_id": rsu_id,
+        "server_timestamp": ts(),
+        "green_corridor_active": len(active_for_rsu) > 0,
+        "green_corridor_count": len(active_for_rsu),
+        "active_corridors": [c["corridor_id"] for c in active_for_rsu],
+    }
+    if all_active:
+        response["green_corridor_global"] = {
+            "active": True,
+            "active_count": len(all_active),
+        }
+    return jsonify(response)
+
+
 @app.route("/graph/register", methods=["POST"])
 def graph_register_endpoint():
     """Register RSU topology via HTTP (mirrors the rsu_register SocketIO event).
@@ -798,10 +828,13 @@ def green_corridor_endpoint():
         }), 400
 
     action = str(payload.get("action", "activate")).strip().lower()
+    # "deactivate" is an alias for "clear" with a specific corridor_id
+    if action == "deactivate":
+        action = "clear"
     if action not in {"activate", "clear"}:
         return jsonify({
             "status": "error",
-            "message": "action must be one of: activate, clear",
+            "message": "action must be one of: activate, deactivate, clear",
         }), 400
 
     if action == "clear":
@@ -878,6 +911,11 @@ def green_corridor_endpoint():
                 "status": "error",
                 "message": f"Unknown destination_rsu_id: {destination_rsu_id}",
             }), 404
+        if source_rsu_id == destination_rsu_id:
+            return jsonify({
+                "status": "error",
+                "message": "source_rsu_id and destination_rsu_id must be different",
+            }), 400
         # Keep anchor semantics for backward-compatible clear/filter behaviour.
         anchor_rsu_id = source_rsu_id
     else:
