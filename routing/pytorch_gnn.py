@@ -459,6 +459,215 @@ class TemporalAttention(nn.Module):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Improved T-GCN: Multi-Feature Graph Conv + A3T-GCN Attention
+# ─────────────────────────────────────────────────────────────────────────────
+
+class MultiFeatureTGCNGraphConv(nn.Module):
+    """T-GCN graph convolution that accepts F-dimensional node features.
+
+    Fixes the original TGCNGraphConvolution which hard-coded input_dim=1
+    (designed for single-sensor speed readings).  Here the weight matrix
+    is shaped (num_gru_units + input_dim, output_dim) for arbitrary F.
+
+    Paper equation (extended):
+        output = Ã · [X_t || H_{t-1}] · W + b
+    where X_t ∈ R^{N×F}, H_{t-1} ∈ R^{N×D}, W ∈ R^{(F+D)×D_out}.
+    """
+
+    def __init__(
+        self,
+        adj: np.ndarray,
+        num_gru_units: int,
+        output_dim: int,
+        input_dim: int,
+        bias_init: float = 0.0,
+    ):
+        super().__init__()
+        self.num_gru_units = num_gru_units
+        self.output_dim = output_dim
+        self.input_dim = input_dim
+
+        laplacian = calculate_laplacian_with_self_loop(torch.FloatTensor(adj))
+        self.register_buffer("laplacian", laplacian)
+
+        # Critical fix: (num_gru_units + input_dim) not (num_gru_units + 1)
+        self.weights = nn.Parameter(
+            torch.empty(num_gru_units + input_dim, output_dim)
+        )
+        self.biases = nn.Parameter(torch.empty(output_dim))
+        nn.init.xavier_uniform_(self.weights)
+        nn.init.constant_(self.biases, bias_init)
+
+    def forward(self, inputs: Tensor, hidden_state: Tensor) -> Tensor:
+        """
+        Args:
+            inputs:       [batch, nodes, input_dim]   ← full feature vector
+            hidden_state: [batch, nodes * num_gru_units]
+        Returns:
+            output: [batch, nodes * output_dim]
+        """
+        batch_size, num_nodes, _ = inputs.shape
+        hidden_state = hidden_state.view(batch_size, num_nodes, self.num_gru_units)
+
+        # [batch, nodes, input_dim + num_gru_units]
+        concatenation = torch.cat([inputs, hidden_state], dim=-1)
+
+        # Reshape for efficient batch graph mult: [nodes, (F+D) * batch]
+        concatenation = concatenation.permute(1, 2, 0).reshape(num_nodes, -1)
+
+        # Graph diffusion: Ã @ [X || H]
+        a_times_concat = self.laplacian @ concatenation  # [nodes, (F+D)*batch]
+
+        # Reshape back: [batch, nodes, F+D]
+        a_times_concat = a_times_concat.view(
+            num_nodes, self.input_dim + self.num_gru_units, batch_size
+        )
+        a_times_concat = a_times_concat.permute(2, 0, 1)   # [batch, nodes, F+D]
+        a_times_concat = a_times_concat.reshape(-1, self.input_dim + self.num_gru_units)
+
+        # Linear: [batch*nodes, output_dim]
+        outputs = a_times_concat @ self.weights + self.biases
+        return outputs.view(batch_size, -1)   # [batch, nodes*output_dim]
+
+
+class MultiFeatureTGCNCell(nn.Module):
+    """T-GCN GRU cell that accepts F-dimensional input (not just a scalar).
+
+    Gates (from paper Eq. 7-9, extended to multi-feature input):
+        r, u = σ( Ã [X_t || H_{t-1}] W_ru + b_ru )
+        c    = tanh( Ã [X_t || r ⊙ H_{t-1}] W_c + b_c )
+        H_t  = u ⊙ H_{t-1} + (1-u) ⊙ c
+    """
+
+    def __init__(self, adj: np.ndarray, input_dim: int, hidden_dim: int):
+        super().__init__()
+        self.input_dim = input_dim
+        self.hidden_dim = hidden_dim
+
+        self.register_buffer("adj", torch.FloatTensor(adj))
+
+        # Joint reset+update gate (output: 2*hidden_dim)
+        self.graph_conv1 = MultiFeatureTGCNGraphConv(
+            adj, hidden_dim, hidden_dim * 2, input_dim, bias_init=1.0
+        )
+        # Candidate hidden state
+        self.graph_conv2 = MultiFeatureTGCNGraphConv(
+            adj, hidden_dim, hidden_dim, input_dim, bias_init=0.0
+        )
+
+    def forward(
+        self, inputs: Tensor, hidden_state: Tensor
+    ) -> tuple[Tensor, Tensor]:
+        """
+        Args:
+            inputs:       [batch, nodes, input_dim]
+            hidden_state: [batch, nodes * hidden_dim]
+        Returns:
+            (new_hidden, new_hidden)  — compatible with TGCNCell interface
+        """
+        concatenation = torch.sigmoid(self.graph_conv1(inputs, hidden_state))
+        r, u = torch.chunk(concatenation, chunks=2, dim=1)
+        c = torch.tanh(self.graph_conv2(inputs, r * hidden_state))
+        new_hidden_state = u * hidden_state + (1.0 - u) * c
+        return new_hidden_state, new_hidden_state
+
+
+class ImprovedTGCN(nn.Module):
+    """Improved T-GCN (A3T-GCN variant) for multi-feature traffic prediction.
+
+    Key improvements over the original TGCN class:
+    1. Feature expansion: projects F raw features → hidden_dim BEFORE the GCN
+       cell.  Eliminates the 4→1 bottleneck present in the original.
+    2. Multi-feature GCN cell: weight matrix (D+D, 2D) instead of (D+1, 2D).
+    3. A3T-GCN temporal attention: softmax over all seq-step hidden states,
+       so ALL timesteps contribute to the prediction — not just the last one.
+    4. LayerNorm: stabilises hidden-state scale across training steps.
+
+    References:
+      Zhao et al. T-GCN, IEEE T-ITS 2019 (base architecture)
+      Bai  et al. A3T-GCN, ISPRS IJGI 2021 (attention extension)
+    """
+
+    def __init__(self, adj: np.ndarray, config: TGCNConfig):
+        super().__init__()
+        self.config = config
+        self.num_nodes = adj.shape[0]
+        self.hidden_dim = config.hidden_dim
+
+        # Feature expansion: F → hidden_dim  (NOT bottlenecked to 1!)
+        self.input_proj = nn.Sequential(
+            nn.Linear(config.node_feature_dim, config.hidden_dim),
+            nn.ReLU(),
+            nn.Dropout(config.dropout_rate),
+        )
+
+        # Multi-feature GRU+GCN cell (takes hidden_dim-dim input)
+        self.tgcn_cell = MultiFeatureTGCNCell(adj, config.hidden_dim, config.hidden_dim)
+
+        # A3T-GCN attention over all sequence hidden states
+        self.attention = TemporalAttention(config.hidden_dim, self.num_nodes)
+
+        # Layer normalisation for stability
+        self.layer_norm = nn.LayerNorm(config.hidden_dim)
+
+        # Output head (identical to original TGCN)
+        self.output_head = nn.Sequential(
+            nn.Linear(config.hidden_dim, 32),
+            nn.ReLU(),
+            nn.Dropout(config.dropout_rate),
+            nn.Linear(32, config.output_dim),
+            nn.Sigmoid(),
+        )
+
+        self.register_buffer("adj", torch.FloatTensor(adj))
+
+    def forward(
+        self,
+        x_seq: Tensor,
+        h_init: Tensor | None = None,
+    ) -> tuple[Tensor, Tensor]:
+        """
+        Args:
+            x_seq:  [batch, seq_len, num_nodes, features]
+                    or [seq_len, num_nodes, features]
+            h_init: Initial hidden state [batch, nodes * hidden_dim]
+        Returns:
+            output:  [batch, num_nodes, output_dim]
+            h_final: [batch, num_nodes * hidden_dim]
+        """
+        if x_seq.dim() == 3:
+            x_seq = x_seq.unsqueeze(0)
+
+        batch_size, seq_len, num_nodes, features = x_seq.shape
+        device = x_seq.device
+
+        if h_init is None:
+            h_init = torch.zeros(
+                batch_size, num_nodes * self.hidden_dim, device=device
+            )
+
+        # Project features: [B, seq, N, F] → [B, seq, N, hidden_dim]
+        x_proj = self.input_proj(x_seq)
+
+        # Unroll T-GCN cells across the sequence
+        hidden_states: list[Tensor] = []
+        h = h_init
+        for t in range(seq_len):
+            x_t = x_proj[:, t, :, :]          # [B, N, hidden_dim]
+            _, h = self.tgcn_cell(x_t, h)     # h: [B, N * hidden_dim]
+            hidden_states.append(h)
+
+        # A3T-GCN: soft-attention over all hidden states → [B, N, hidden_dim]
+        context = self.attention(hidden_states)
+
+        # Normalise + predict
+        context = self.layer_norm(context)     # [B, N, hidden_dim]
+        output = self.output_head(context)     # [B, N, output_dim]
+
+        return output, h
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Full T-GCN Model
 # ─────────────────────────────────────────────────────────────────────────────
 
